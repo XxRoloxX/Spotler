@@ -1,8 +1,11 @@
+import datetime
 import pprint
 import sqlite3
 import numpy as np
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.model_selection import train_test_split
+
+
 
 def get_most_popular_genres(n, db_path):
 
@@ -62,6 +65,12 @@ def remove_tracks_without_artists(db_path):
     cur.close()
     return rowcount
 
+def get_sql_query_results(db_path, query):
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    results = cur.execute(query)
+    return results.fetchall(),cur
+
 def fit_data_to_lda(db_path, inclusion_criteria):
     
 
@@ -97,7 +106,3 @@ def fit_data_to_lda(db_path, inclusion_criteria):
             correct_guesses+=1
 
     return correct_guesses/len(X_test),inclusion_criteria
-
-
-if __name__=="__main__":
-    print(remove_tracks_without_artists("db.sqlite3"))

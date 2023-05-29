@@ -16,13 +16,10 @@ def save_track_to_db(track_data: dict, api_wrapper):
             track_data.update(track_features)
             track_serializer = TrackSerializer(data=track_data)
 
-           
-
             if not track_serializer.is_valid():
                 raise Exception("Incorrect track data: "+str(track_serializer.errors))
             
             print("New Track: "+track_serializer.validated_data.get("name"))
-
 
             track_found = track_serializer.save()
 
@@ -33,11 +30,13 @@ def save_track_to_db(track_data: dict, api_wrapper):
                 artist_found = save_artist_to_db(artist_id=artist["artist_id"], artist_name=artist["name"], spotify_wrapper=api_wrapper)
                 track_found.artists.add(artist_found)
 
-        except Exception as e:
+        except Exception as exception:
+            
             if track_found:
                 track_found.delete()
+
             traceback.print_exc()
-            print("Unexpected exception during track saving: "+str(e))
+            print("Unexpected exception during track saving: "+str(exception))
 
     else:
         print((f"Track with id {track_found.track_id} was already found!"))
