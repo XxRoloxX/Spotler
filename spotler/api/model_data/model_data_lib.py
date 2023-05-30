@@ -36,6 +36,7 @@ def create_csv_from_query(db_path, csv_filename, query,separator:str):
             csv_file.write("\n")
     
     cur.close()
+    return column_names
 
 def fit_data_to_lda(db_path, inclusion_criteria):
     

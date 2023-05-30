@@ -14,6 +14,7 @@ numpy = "*"
 pandas = "*"
 ydata-profiling = "*"
 ipywidgets = "*"
+imbalanced-learn = "*"
 
 [dev-packages]
 ipykernel = "*"
