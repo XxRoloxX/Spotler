@@ -1,4 +1,5 @@
 from django.db import models
+from jsonfield import JSONField
 
 
 # Create your models here.
@@ -60,27 +61,12 @@ class Track(models.Model):
     time_signature = models.DecimalField(max_digits=15, decimal_places=10, default=0)
     valence = models.DecimalField(max_digits=15, decimal_places=10, default=0)
     
+class ClassificationModel(models.Model):
+    model_id = models.AutoField(primary_key=True)
+    model_name = models.CharField(max_length=70, unique=True)
 
+class ClassificationParamter(models.Model):
+    parameters_id = models.AutoField(primary_key=True)
+    model_id = models.ForeignKey(ClassificationModel, on_delete=models.CASCADE)
+    parameters = JSONField()
 
-
-
-# class ArtistsTracks(models.Model):
-#     """
-#     Tracks with their authors
-#     """
-#     track_id = models.ForeignKey(Track, on_delete=models.CASCADE)
-#     artist_id = models.ForeignKey(Artist, to_field="artist_id",on_delete=models.CASCADE)
-
-#     class Meta:
-#         unique_together = ["track_id","artist_id"]
-
-
-# class TrackGenres(models.Model):
-#     """
-#     Genres of tracks
-#     """
-#     track_id = models.ForeignKey(Track, related_name="track_of_genre", on_delete=models.CASCADE)
-#     genre_id = models.ForeignKey(Genre, related_name="genre_of_track", on_delete=models.CASCADE)
-
-#     class Meta:
-#         unique_together = ["genre_id","track_id"]
