@@ -7,6 +7,7 @@ urlpatterns = [
     path('create',views.track_create_view),
     path('playlist', views.retrieveTracksFromPlaylistAPI),
     path('cluster', views.cluster_genres_with_simplified_names),
-    path('model', views.fit_model)
+    path('model', views.fit_model),
+    path('test', views.test_endpoint)
 
 ]

@@ -5,16 +5,16 @@ from rest_framework import mixins
 from rest_framework import generics
 from .data_collection.data_clean_up import fit_data_to_lda, get_most_popular_genres
 from .data_collection.save_to_db import save_track_to_db
-from .spotifyWrapper import SpotifyWrapper
 from .serializers import TrackSerializer
 from .models import Track, Genre
-from .spotifyWrapper import SpotifyWrapper
+from .spotify_wrapper import SpotifyWrapper
+from .classification.classifier_trainer import ClassifierTrainer, GenreClassifierTrainer
 # Create your views here.
 
 
-spotify_wrapper = SpotifyWrapper()
-spotify_wrapper.get_authorization_code()
-spotify_wrapper.get_refresh_token()
+# spotify_wrapper = SpotifyWrapper()
+# spotify_wrapper.get_authorization_code()
+# spotify_wrapper.get_refresh_token()
 
 
 class TracksListAPIView(generics.ListAPIView):
@@ -40,6 +40,7 @@ class TrackCreateAPIView(generics.CreateAPIView):
 
 @api_view(["POST"])
 def retrieveTracksFromPlaylistAPI(request, pk=None, *args, **kwargs):
+    raise Exception("Defunct endpoint")
 
     playlist_id = request.data["playlist_id"]
 
@@ -86,11 +87,20 @@ def cluster_genres_with_simplified_names(request, pk=None, *args, **kwargs):
 @api_view(["GET"])
 def fit_model(request, pk=None, *args, **kwargs):
 
+
+
     criteria = 0.1 if not request.GET.get(
         'criteria') else float(request.GET.get('criteria'))
     correctnes = fit_data_to_lda('db.sqlite3', criteria)
     return Response(correctnes)
 
+@api_view(["GET"])
+def test_endpoint(request, pk=None, *args, **kwargs):
+   genre_classifier = GenreClassifierTrainer()
+   genre_classifier.create_source_dataframe()
+   genre_classifier.resample_set("LexicalUndersampling",14)
+   genre_classifier.train_model("LinearDiscriminantAnalysis")
+   return Response(genre_classifier.score_model())
 
 track_list_view = TracksListAPIView.as_view()
 track_create_view = TrackCreateAPIView.as_view()

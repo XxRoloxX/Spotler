@@ -16,6 +16,7 @@ ydata-profiling = "*"
 ipywidgets = "*"
 imbalanced-learn = "*"
 jsonfield = "*"
+typing = "*"
 
 [dev-packages]
 ipykernel = "*"
