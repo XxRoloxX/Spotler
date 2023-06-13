@@ -1,12 +1,13 @@
 import abc
+import pprint
 import numpy as np
 import pandas as pd
 from sklearn.discriminant_analysis import StandardScaler
-from sklearn.metrics import balanced_accuracy_score, make_scorer, top_k_accuracy_score
+from sklearn.metrics import balanced_accuracy_score, make_scorer, top_k_accuracy_score,accuracy_score
 from sklearn.model_selection import GridSearchCV, cross_val_score
 from sklearn.pipeline import make_pipeline
 
-from .parameters_persitance import save_parameters
+from .model_persistance import pickle_model
 from .classifier_creators import (
     CLASSIFIERS_CREATORS_MAP,
     ClassifierNotSupportedException,
@@ -47,6 +48,7 @@ class ClassifierTrainer(metaclass=ABCMeta):
         self.resampler = UniversalResampler()
         self.features_labels = []
         self.classes_labels = []
+        self.get_nested_model = None
 
 
     def update_state_after_loading_data(self, features_labels, classes_labels):
@@ -78,6 +80,9 @@ class ClassifierTrainer(metaclass=ABCMeta):
                 f"Classifier {classifier_name} is not supported. Available classifiers: "
                 + ", ".join(list(CLASSIFIERS_CREATORS_MAP.keys()))
             )
+    @property
+    def name(self):
+        return self.model.__class__.__name__
 
     @property
     def datasource_length(self):
@@ -85,19 +90,39 @@ class ClassifierTrainer(metaclass=ABCMeta):
         Return number of rows of current dataset
         """
         return self.source_dataframe.shape[0]
+    
+    @property
+    def model(self):
+        return self.get_nested_model(self.classifier)
+    
+    @property
+    def classes(self):
+        return self.model.classes_
+    
+    @property
+    def model_parameters(self):
+        self.is_classifier_loaded_validation()
+        return self.model.get_params(deep=True)
+    
 
     @abc.abstractmethod
     def create_source_dataframe(self, features_labels, classes_labels):
         ...
-
-    def get_model_parameters(self):
-        self.is_classifier_loaded_validation()
-        return {
-            "coef": self.classifier.coef_,
-            "intercept": self.classifier.intercept_.tolist(),
-        }
     
-    @save_parameters
+    def get_inner_model_classes(self):
+        self.is_classifier_loaded_validation()
+        return self.model.classes_
+
+    # def get_model_parameters(self):
+        
+    #     self.is_classifier_loaded_validation()
+    #     return {
+    #         "coef": self.model.coef_,
+    #         "intercept": self.model.intercept_.tolist(),
+    #     }
+    
+    
+    @pickle_model
     def train_model(
         self, model_name: str, scoring_strategy=make_scorer(balanced_accuracy_score)
     ):
@@ -106,17 +131,28 @@ class ClassifierTrainer(metaclass=ABCMeta):
         """
         model_factory = self.__get_model_factory(model_name)
         self.classifier = model_factory.create_optimized_model(scoring_strategy)
+        self.get_nested_model = model_factory.get_nested_model
+
         self.classifier.fit(
             self.source_dataframe[self.features_labels].values,
             self.source_dataframe[self.classes_labels].values.ravel(),
         )
 
-    def score_model(self):
+    def score_model(self, scorer):
         self.is_classifier_loaded_validation()
         return cross_val_score(self.classifier,
                                 self.source_dataframe[self.features_labels].values,
                                 self.source_dataframe[self.classes_labels].values.ravel(),
-                               scoring=make_scorer(top_k_accuracy_score, k=3, needs_proba=True) )
+                               scoring=scorer )
+    
+    def score_model_on_balanced_accuracy(self):
+        return self.score_model(make_scorer(balanced_accuracy_score))
+       
+    def score_model_on_mean_accuracy(self):
+        return self.score_model(make_scorer(accuracy_score))
+    
+    def score_model_on_top_k_accuracy(self):
+        return self.score_model(make_scorer(top_k_accuracy_score, k=3, needs_proba=True))
     
 
     def resample_set(self, resampling_strategy_name: str, *resampling_strategy_parameters):
@@ -132,6 +168,13 @@ class ClassifierTrainer(metaclass=ABCMeta):
         self.is_classifier_supported_validation(model_name)
         return CLASSIFIERS_CREATORS_MAP[model_name]
     
+    
+
+# def after_load(classifer_train):
+#     classifer_train
+#     def innner_after_load(classifier_train, *args):
+#         ...
+#     return innner_after_load
 
 
 class ClassifierNotLoadedException(Exception):
@@ -139,7 +182,6 @@ class ClassifierNotLoadedException(Exception):
 
 
 class GenreClassifierTrainer(ClassifierTrainer):
-
 
     def create_source_dataframe(
         self, features_labels=TRACK_METADATA_KEYS, classes_labels=[GENRE_KEY]
@@ -164,4 +206,5 @@ class GenreClassifierTrainer(ClassifierTrainer):
                     )
 
         self.source_dataframe = pd.DataFrame(track_genres_dict)
+
         self.update_state_after_loading_data(features_labels,classes_labels)

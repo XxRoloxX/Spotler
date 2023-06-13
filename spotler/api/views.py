@@ -3,11 +3,12 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import mixins
 from rest_framework import generics
+from .classification.classifier_loader import ClassifiersLoader
 from .data_collection.data_clean_up import fit_data_to_lda, get_most_popular_genres
 from .data_collection.save_to_db import save_track_to_db
 from .serializers import TrackSerializer
 from .models import Track, Genre
-from .spotify_wrapper import SpotifyWrapper
+from .spotify_wrapper.spotify_wrapper import SpotifyWrapper
 from .classification.classifier_trainer import ClassifierTrainer, GenreClassifierTrainer
 # Create your views here.
 
@@ -15,7 +16,7 @@ from .classification.classifier_trainer import ClassifierTrainer, GenreClassifie
 # spotify_wrapper = SpotifyWrapper()
 # spotify_wrapper.get_authorization_code()
 # spotify_wrapper.get_refresh_token()
-
+ACTIVE_CLASSIFIERS = ClassifiersLoader()
 
 class TracksListAPIView(generics.ListAPIView):
     queryset = Track.objects.all()
@@ -98,9 +99,14 @@ def fit_model(request, pk=None, *args, **kwargs):
 def test_endpoint(request, pk=None, *args, **kwargs):
    genre_classifier = GenreClassifierTrainer()
    genre_classifier.create_source_dataframe()
-   genre_classifier.resample_set("LexicalUndersampling",14)
-   genre_classifier.train_model("LinearDiscriminantAnalysis")
-   return Response(genre_classifier.score_model())
+   genre_classifier.resample_set("LexicalUndersampling",20)
+   train_result = genre_classifier.train_model(request.GET.get('classifier'))
+   #print(genre_classifier.classes)
+   return Response(train_result)
+
+@api_view(["GET"])
+def classify_track(request, pk=None, *args, **kwargs):
+    return Response(ACTIVE_CLASSIFIERS.get_classifier_trainer(0)["model"].classes)
 
 track_list_view = TracksListAPIView.as_view()
 track_create_view = TrackCreateAPIView.as_view()

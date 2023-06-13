@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Track, Artist, Genre
+from .models import ClassificationModel, ClassificationParameter, Track, Artist, Genre
 
 class GenreSerializer(serializers.ModelSerializer):
     class Meta:
@@ -40,6 +40,14 @@ class TrackSerializer(serializers.ModelSerializer):
                   "valence"
                   ]
         
+class ClassificationModelSerializers(serializers.ModelSerializer):
+    class Meta:
+        model = ClassificationModel
+        fields = "__all__"
 
 
-
+class ClassificationParameterSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model=ClassificationParameter
+        fields = '__all__'

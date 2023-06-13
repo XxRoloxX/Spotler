@@ -1,1 +1,2 @@
 *.env
+./api/classification/pickled_models/*

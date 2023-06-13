@@ -1,5 +1,4 @@
 from django.db import models
-from jsonfield import JSONField
 
 
 # Create your models here.
@@ -47,7 +46,15 @@ class ClassificationModel(models.Model):
 
 class ClassificationParameter(models.Model):
     parameters_id = models.AutoField(primary_key=True)
-    model_id = models.ForeignKey(ClassificationModel, on_delete=models.CASCADE)
-    model_parameters = JSONField()
+    model = models.ForeignKey(ClassificationModel, on_delete=models.CASCADE)
     generation_date = models.DateTimeField(auto_now=True)
-    classes = models.ManyToManyField(Genre)
+    serialized_model_path = models.CharField(max_length=150, blank=False,unique=True)
+    balanced_accuracy_score = models.DecimalField(max_digits=25, decimal_places=20, null=True)
+    accuracy_score = models.DecimalField(max_digits=25, decimal_places=20, null=True)
+    top_k_accuracy_score = models.DecimalField(max_digits=25, decimal_places=20, null=True)
+    is_active = models.BooleanField(null=False, default=False)
+    classes = models.ManyToManyField(Genre, null=True)
+
+""" 
+Loading pickled classifiers
+"""

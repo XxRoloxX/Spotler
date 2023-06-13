@@ -52,7 +52,7 @@ class UniversalResampler:
     def __universal_resampling(self, resampling_strategy):
         features_res, classes_res = resampling_strategy.fit_resample(
             self.source_dataframe[self.X_labels].values,
-            self.source_dataframe[self.Y_labels].values,
+            self.source_dataframe[self.Y_labels].values.ravel(),
         )
         resampled_dataframe = self.__create_resampled_dataframe(features_res, classes_res)
 

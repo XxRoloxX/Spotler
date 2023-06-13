@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set -a
-source spotler/api/spotify-wrapper-config.env
+source spotler/api/spotify_wrapper/spotify-wrapper-config.env
 set +a
 
 
