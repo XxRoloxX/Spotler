@@ -45,12 +45,15 @@ class TrackCreateAPIView(generics.CreateAPIView):
 
 
 @api_view(["POST"])
-def retrieveTracksFromPlaylistAPI(request, pk=None, *args, **kwargs):
-    raise Exception("Defunct endpoint")
+def retrieve_tracks_from_playlist(request, pk=None, *args, **kwargs):
+    spotify_wrapper = SpotifyWrapper(
+        code=request.session.get("code"),
+        refresh_token=request.session.get("refresh_token"),
+    )
+    if "playlist_id" not in request.data:
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 
     playlist_id = request.data["playlist_id"]
-
-    print(playlist_id)
 
     tracks_data = [
         {
@@ -114,7 +117,9 @@ def test_endpoint(request, pk=None, *args, **kwargs):
 
 
 @api_view(["GET"])
-def classify_track(request, pk=None, *args, **kwargs):
+def track_genres(request, pk=None, *args, **kwargs):
+    print("Code " + request.session["code"])
+
     spotler_wrapper = SpotifyWrapper(
         code=request.session["code"], refresh_token=request.session["refresh_token"]
     )
@@ -124,7 +129,11 @@ def classify_track(request, pk=None, *args, **kwargs):
     track_features_serializer = TrackFeaturesSerializer(data=track_features)
     if track_features_serializer.is_valid():
         active_classifier = ACTIVE_CLASSIFIERS.get_classifier_trainer(0)["model"]
-        return Response(active_classifier.predict_proba_with_classes(track_features_serializer.validated_data))
+        return Response(
+            active_classifier.predict_proba_with_classes(
+                track_features_serializer.validated_data
+            )
+        )
 
     return Response(
         {"status": track_features["status"]}, status=status.HTTP_404_NOT_FOUND
@@ -132,17 +141,46 @@ def classify_track(request, pk=None, *args, **kwargs):
 
 
 @api_view(["POST"])
-def authorize(request, *args, **kwargs):
+def authorize_with_spotify(request, *args, **kwargs):
     spotler_wrapper = SpotifyWrapper()
-    spotler_wrapper.code = request.data["code"]
-    error = spotler_wrapper.get_refresh_token()
 
-    if error:
-        return Response({"status": error}, status=status.HTTP_401_UNAUTHORIZED)
+    if "code" not in request.data:
+        return Response(
+            {"status": "error", "message": "No code in request"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    spotler_wrapper.code = request.data["code"]
+    response = spotler_wrapper.get_refresh_token()
+
+    print(response)
+
+    if "error" in response:
+        return Response(
+            {"error": response["error"]}, status=status.HTTP_401_UNAUTHORIZED
+        )
 
     request.session["code"] = spotler_wrapper.code
     request.session["refresh_token"] = spotler_wrapper.refresh_token
-    return Response(request.session["refresh_token"])
+
+    print("SESSION UPDATED")
+
+    return Response({"status": "Authorized successfully"}, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+def verify_cookies(request, pk=None, *args, **kwargs):
+    if "code" not in request.session or "refresh_token" not in request.session:
+        return Response({"cookie_status": False})
+
+    spotify_wrapper = SpotifyWrapper(
+        code=request.session["code"], refresh_token=request.session["refresh_token"]
+    )
+    response_status = spotify_wrapper.get_new_access_token()
+    if "error" in response_status:
+        return Response({"cookie_status": False})
+
+    return Response({"cookie_status": True})
 
 
 track_list_view = TracksListAPIView.as_view()

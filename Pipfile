@@ -17,6 +17,7 @@ ipywidgets = "*"
 imbalanced-learn = "*"
 jsonfield = "*"
 typing = "*"
+django-cors-headers = "*"
 
 [dev-packages]
 ipykernel = "*"

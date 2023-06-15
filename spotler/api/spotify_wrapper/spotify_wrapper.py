@@ -81,9 +81,10 @@ class SpotifyWrapper:
             self.expires_in = datetime.datetime.now() + datetime.timedelta(
                 seconds=response_json["expires_in"]
             )
-            #return self.refresh_token
+            return {"refresh_token": self.refresh_token}
+
         else:
-            return {"error" :"Could not get refresh token"}
+            return {"error" :f"Could not get refresh token. {response.reason}"}
 
     def get_new_access_token(self):
         params = {
@@ -104,7 +105,7 @@ class SpotifyWrapper:
 
         if not response.ok:
             print(response.reason)
-            raise Exception(response.reason, response.url)
+            return {"error": f"Could not get new access token. {response.reason}"}
         else:
             response_json = response.json()
             self.access_token = response_json["access_token"]
@@ -112,7 +113,7 @@ class SpotifyWrapper:
             self.expires_in = datetime.datetime.now() + datetime.timedelta(
                 seconds=response_json["expires_in"]
             )
-            return self.access_token + ", expires in: " + str(self.expires_in)
+            return {"access_token": self.access_token}
 
     def auth_get(self, url, access_token):
         response = requests.get(
