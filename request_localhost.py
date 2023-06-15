@@ -1,5 +1,5 @@
 
-from spotler.api.spotifyWrapper import SpotifyWrapper
+from spotler.api.spotify_wrapper.spotify_wrapper import SpotifyWrapper
 import requests
 import sys
 USER_ID = 'spotify'

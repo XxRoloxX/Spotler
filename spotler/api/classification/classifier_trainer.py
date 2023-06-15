@@ -1,5 +1,6 @@
 import abc
 import pprint
+from typing import Any, Dict, List, Union
 import numpy as np
 import pandas as pd
 from sklearn.discriminant_analysis import StandardScaler
@@ -112,15 +113,33 @@ class ClassifierTrainer(metaclass=ABCMeta):
     def get_inner_model_classes(self):
         self.is_classifier_loaded_validation()
         return self.model.classes_
-
-    # def get_model_parameters(self):
-        
-    #     self.is_classifier_loaded_validation()
-    #     return {
-    #         "coef": self.model.coef_,
-    #         "intercept": self.model.intercept_.tolist(),
-    #     }
     
+
+    def predict_proba(self, features:Union[List[Any], Dict[Any,Any]]):
+        self.is_classifier_loaded_validation()
+        if isinstance(features,dict):
+            return self.classifier.predict_proba(self.convert_dict_to_features_list(features))
+    
+        return self.classifier.predict_proba([features])
+
+    def predict_proba_with_classes(self, features:Union[List[Any], Dict[Any,Any]]):
+        predicted_proba = self.predict_proba(features)
+        result_mapping = {}
+        print(self.model.classes_, predicted_proba)
+        for cls, proba in zip(self.model.classes_, predicted_proba.ravel()):
+            result_mapping[cls]=proba
+        return result_mapping
+    
+    def predict(self,features:Union[List[Any], Dict[Any,Any]]):
+        self.is_classifier_loaded_validation()
+        if isinstance(features,dict):
+            return self.classifier.predict(self.convert_dict_to_features_list(features))
+    
+        return self.classifier.predict(features)
+
+    @abc.abstractmethod
+    def convert_dict_to_features_list(self, features_dict):
+        ...
     
     @pickle_model
     def train_model(
@@ -182,6 +201,19 @@ class ClassifierNotLoadedException(Exception):
 
 
 class GenreClassifierTrainer(ClassifierTrainer):
+
+    def convert_dict_to_features_list(self, features_dict):
+        
+        features = []
+        for metadata_key in TRACK_METADATA_KEYS:
+            if metadata_key in features_dict:
+                features.append(features_dict[metadata_key])
+            
+            else:
+                return None
+        return [features]
+    
+
 
     def create_source_dataframe(
         self, features_labels=TRACK_METADATA_KEYS, classes_labels=[GENRE_KEY]

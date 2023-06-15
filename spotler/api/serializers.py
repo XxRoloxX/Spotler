@@ -51,3 +51,32 @@ class ClassificationParameterSerializer(serializers.ModelSerializer):
     class Meta:
         model=ClassificationParameter
         fields = '__all__'
+TRACK_METADATA_KEYS = [
+    "acousticness",
+    "danceability",
+    "energy",
+    "instrumentalness",
+    "key",
+    "loudness",
+    "liveness",
+    "mode",
+    "speechiness",
+    "tempo",
+    "time_signature",
+    "valence",
+]
+
+class TrackFeaturesSerializer(serializers.Serializer):
+    acousticness = serializers.FloatField()
+    danceability = serializers.FloatField()
+    energy = serializers.FloatField()
+    instrumentalness = serializers.FloatField()
+    key = serializers.FloatField()
+    loudness = serializers.FloatField()
+    liveness = serializers.FloatField()
+    mode = serializers.FloatField()
+    speechiness = serializers.FloatField()
+    tempo = serializers.FloatField()
+    time_signature = serializers.FloatField()
+    valence = serializers.FloatField()
+

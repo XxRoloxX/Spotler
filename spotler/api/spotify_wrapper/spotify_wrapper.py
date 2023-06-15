@@ -30,12 +30,18 @@ SPOTIFY_REFRESH_ACCESS_TOKEN_URL = "https://accounts.spotify.com/api/token"
 
 
 class SpotifyWrapper:
-    def __init__(self):
-        self.code = None
-        self.access_token = None
-        self.state = generateRandomString(10)
-        self.refresh_token = None
-        self.expires_in = None
+    def __init__(self, **kwargs):
+        self.code = kwargs.get("code",None)
+        self.refresh_token = kwargs.get("refresh_token",None)
+
+        if self.code and self.refresh_token:
+            self.get_new_access_token()
+        
+        else:
+            self.access_token = None
+            self.state = generateRandomString(10)
+            self.refresh_token = None
+            self.expires_in = None
 
     def get_authorization_code(self):
         url = self.prepare_authorization_code_url(self.state)
@@ -43,6 +49,11 @@ class SpotifyWrapper:
         self.code = input("Paste authorization code: ")
 
     def get_refresh_token(self):
+        """ 
+        Sets refresh token and gets new access token 
+        return error if refresh token is not valid
+
+        """
         post_json = {
             "grant_type": "authorization_code",
             "code": self.code,
@@ -70,12 +81,9 @@ class SpotifyWrapper:
             self.expires_in = datetime.datetime.now() + datetime.timedelta(
                 seconds=response_json["expires_in"]
             )
-            return self.refresh_token
+            #return self.refresh_token
         else:
-            raise Exception(
-                "Exception during authentication: " + str(response.reason),
-                str(response.url),
-            )
+            return {"error" :"Could not get refresh token"}
 
     def get_new_access_token(self):
         params = {
@@ -150,10 +158,13 @@ class SpotifyWrapper:
 
     def getTrackFeatures(self, track_id):
         self.refresh_token_if_needed()
-        resp_json = self.auth_get(
-            SPOTIFY_GET_TRACK_FEATURES_URL + track_id, self.access_token
-        )
-        return resp_json
+        try:
+            resp_json = self.auth_get(
+                SPOTIFY_GET_TRACK_FEATURES_URL + track_id, self.access_token
+            )
+            return resp_json
+        except Exception as e:
+            return {"status":"invalid track id"}
 
     def getArtistGenres(self, artist_id):
         self.refresh_token_if_needed()
