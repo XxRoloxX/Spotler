@@ -1,42 +1,7 @@
 # Spotler
 <!DOCTYPE html>
 <html>
-
 <head>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      line-height: 1.5;
-    }
-
-    h1 {
-      color: #333;
-      font-size: 24px;
-    }
-
-    h2 {
-      color: #555;
-      font-size: 20px;
-    }
-
-    p {
-      color: #777;
-      font-size: 16px;
-    }
-
-    code {
-      background-color: #f4f4f4;
-      padding: 4px 8px;
-      border-radius: 4px;
-    }
-
-    pre {
-      background-color: #f4f4f4;
-      padding: 12px;
-      border-radius: 4px;
-      overflow-x: auto;
-    }
-  </style>
 </head>
 
 <body>
