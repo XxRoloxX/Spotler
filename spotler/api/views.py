@@ -1,29 +1,24 @@
-import io
-import json
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework import mixins
-from rest_framework import generics
-from rest_framework.parsers import JSONParser
 from rest_framework import status
-from django import http
+from django.shortcuts import redirect
+from .models import ClassificationParameter
 
 from .session_validation.session_validation import (
     create_spotify_wrapper_from_session,
-    verify_cookies_correctness,
 )
 from .classification.classifier_loader import ClassifiersLoader
-from .data_collection.data_clean_up import fit_data_to_lda, get_most_popular_genres
 from .data_collection.save_to_db import save_track_to_db
-from .serializers import TrackFeaturesSerializer, TrackSerializer
-from .models import Track, Genre
+from .serializers import ClassificationParameterSerializer, TrackFeaturesSerializer
 from .spotify_wrapper.spotify_wrapper import SpotifyWrapper
-from .classification.classifier_trainer import ClassifierTrainer, GenreClassifierTrainer
+from .classification.classifier_trainer import GenreClassifierTrainer
 
 # Create your views here.
 
 
 ACTIVE_CLASSIFIERS = ClassifiersLoader()
+
+# REDIRECT_URL = "http://localhost:3000/#/login"
 
 
 @api_view(["POST"])
@@ -46,7 +41,7 @@ def retrieve_tracks_from_playlist(request):
             "name": track["track"]["name"],
             "artists": track["track"]["artists"],
         }
-        for track in spotify_wrapper.getTracks(playlist_id)["items"]
+        for track in spotify_wrapper.get_tracks(playlist_id)["items"]
     ]
 
     response_list = []
@@ -57,42 +52,8 @@ def retrieve_tracks_from_playlist(request):
     return Response(response_list)
 
 
-# @api_view(["GET"])
-# def cluster_genres_with_simplified_names(request, pk=None, *args, **kwargs):
-#     def find_simplified_genre(current_genre: str, list_of_popular_genres: list):
-#         for popular_genre in list_of_popular_genres:
-#             if popular_genre[0] in current_genre:
-#                 return popular_genre[0]
-#         return None
-
-#     number_of_classes = (
-#         0.1 if not request.GET.get("classes") else int(request.GET.get("classes"))
-#     )
-
-#     most_popular_genres = get_most_popular_genres(number_of_classes, "db.sqlite3")
-#     print(most_popular_genres)
-
-#     genres = Genre.objects.all()
-
-#     for genre in genres:
-#         simplified_genre = find_simplified_genre(genre.name, most_popular_genres)
-#         genre.simplyfied_name = simplified_genre
-#         genre.save()
-
-#     return Response(most_popular_genres)
-
-
-# @api_view(["GET"])
-# def fit_model(request, pk=None, *args, **kwargs):
-#     criteria = (
-#         0.1 if not request.GET.get("criteria") else float(request.GET.get("criteria"))
-#     )
-#     correctnes = fit_data_to_lda("db.sqlite3", criteria)
-#     return Response(correctnes)
-
-
 @api_view(["GET"])
-def train_model(request, pk=None, *args, **kwargs):
+def train_model(request):
     """
     Train the model with the given criteria.
     """
@@ -114,7 +75,7 @@ def track_genres(request):
     )
 
     track_id = request.GET.get("track_id")
-    track_features = spotler_wrapper.getTrackFeatures(track_id)
+    track_features = spotler_wrapper.get_track_features(track_id)
     track_features_serializer = TrackFeaturesSerializer(data=track_features)
 
     if track_features_serializer.is_valid():
@@ -124,8 +85,6 @@ def track_genres(request):
                 track_features_serializer.validated_data
             )
         )
-    
-
 
     return Response({"status": track_features}, status=status.HTTP_404_NOT_FOUND)
 
@@ -144,6 +103,7 @@ def authorize_with_spotify(request):
         )
 
     spotler_wrapper.code = request.data["code"]
+    print(spotler_wrapper.code)
     response = spotler_wrapper.get_refresh_token()
 
     if "error" in response:
@@ -178,6 +138,9 @@ def verify_cookies(request):
 
 @api_view(["GET"])
 def search_tracks(request):
+    """
+    Returns search results for the given track name in parameters: track_name
+    """
 
     track_name = request.GET.get("track_name")
 
@@ -194,13 +157,56 @@ def search_tracks(request):
             {"status": "error", "message": "Invalid cookies"},
             status=status.HTTP_401_UNAUTHORIZED,
         )
-    
+
     searched_tracks = validated_spotify_wrapper.simplified_tracks_search(track_name)
 
     return Response(searched_tracks)
 
+
+@api_view(["GET"])
+def track_features(request):
+    """
+    Returns track features for the given track id in parameters: track_id
+    """
+
+    TRACK_FEATURES = [
+        "acousticness",
+        "danceability",
+        "energy",
+        "instrumentalness",
+        "liveness",
+        "speechiness",
+        "valence",
+    ]
+
+    track_id = request.GET.get("track_id")
+
+    if not track_id:
+        return Response(
+            {"status": "error", "message": "No track id in request"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    validated_spotify_wrapper = create_spotify_wrapper_from_session(request.session)
+
+    if not validated_spotify_wrapper:
+        return Response(
+            {"status": "error", "message": "Invalid cookies"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    track_metadata = validated_spotify_wrapper.get_track_features(track_id)
+
+    selected_track_metadata = {feature_key:value for feature_key, value in track_metadata.items() if feature_key in TRACK_FEATURES}
+
+    return Response(selected_track_metadata)
+
+
 @api_view(["GET"])
 def profile_info(request):
+    """
+    Returns basic profile info of the user.
+    """
     spotify_wrapper = create_spotify_wrapper_from_session(request.session)
 
     if not spotify_wrapper:
@@ -212,9 +218,26 @@ def profile_info(request):
     result = spotify_wrapper.get_profile_info()
 
     return Response(result)
+
+
 @api_view(["PUT"])
 def delete_cookies(request):
-    """ Delete the cookies from the session."""
-    request.session["code"]= None
+    """Delete the cookies from the session."""
+    request.session["code"] = None
     request.session["refresh_token"] = None
-    return Response({"status": "ok"})
+    return Response({"status": "session cleared"}, status=status.HTTP_200_OK)
+
+@api_view(["GET"])
+def classifier_info(request):
+    """
+    Returns estimator info.
+    """
+    active_classifier = ClassificationParameter.objects.filter(is_active=True).first()
+    parameters_serializer = ClassificationParameterSerializer(active_classifier)
+
+    return Response(parameters_serializer.data)
+
+# @api_view(["GET"])
+# def spotify_redirect(request):
+
+#     return redirect(REDIRECT_URL)

@@ -11,4 +11,6 @@ urlpatterns = [
     path('search-tracks', views.search_tracks),
     path('profile-info', views.profile_info),
     path('delete-cookies', views.delete_cookies),
+    path('track-features', views.track_features),
+    path('classifier-info', views.classifier_info)
 ]

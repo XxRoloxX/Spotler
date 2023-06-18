@@ -1,4 +1,5 @@
 import datetime
+from typing import Dict, List
 import requests
 import urllib.parse
 import random
@@ -12,7 +13,8 @@ USER_ID = "spotify"
 CLIENT_ID = os.environ.get("CLIENT_ID")
 CLIENT_SECRET = os.environ.get("CLIENT_SECRET")
 
-redirect_uri = "http://localhost:3000"
+REDIRECT_URI = "http://localhost:3000/spotify-redirect"
+
 SCOPE = "user-read-private user-top-read playlist-read-collaborative"
 
 
@@ -32,8 +34,12 @@ SPOTIFY_SEARCH_URL = "https://api.spotify.com/v1/search"
 
 SPOTIFY_USER_PROFILE_INFO_URL = "https://api.spotify.com/v1/me"
 
+AUTH_STATE_LENGTH = 10
+
 
 class SpotifyWrapper:
+    """ Wrapper for Spotify API """
+    
     def __init__(self, **kwargs):
         self.code = kwargs.get("code", None)
         self.refresh_token = kwargs.get("refresh_token", None)
@@ -43,16 +49,13 @@ class SpotifyWrapper:
 
         else:
             self.access_token = None
-            self.state = generateRandomString(10)
+            self.state = generate_random_string(AUTH_STATE_LENGTH)
             self.refresh_token = None
             self.expires_in = None
 
-    def get_authorization_code(self):
-        url = self.prepare_authorization_code_url(self.state)
-        print(url)
-        self.code = input("Paste authorization code: ")
+    
 
-    def get_refresh_token(self):
+    def get_refresh_token(self)->Dict[str, str]:
         """
         Sets refresh token and gets new access token
         return error if refresh token is not valid
@@ -61,7 +64,7 @@ class SpotifyWrapper:
         post_json = {
             "grant_type": "authorization_code",
             "code": self.code,
-            "redirect_uri": redirect_uri,
+            "redirect_uri": REDIRECT_URI,
         }
         headers = {
             "Authorization": "Basic "
@@ -79,7 +82,6 @@ class SpotifyWrapper:
 
         if response.ok:
             response_json = response.json()
-            print(response_json)
             self.refresh_token = response_json["refresh_token"]
             self.access_token = response_json["access_token"]
             self.expires_in = datetime.datetime.now() + datetime.timedelta(
@@ -88,9 +90,13 @@ class SpotifyWrapper:
             return {"refresh_token": self.refresh_token}
 
         else:
+            print(response.status_code)
             return {"error": f"Could not get refresh token. {response.reason}"}
 
-    def get_new_access_token(self):
+    def get_new_access_token(self)->Dict[str, str]:
+        """Get access token from refresh token. Returns error if refresh token is not valid.
+
+        """
         params = {
             "grant_type": "refresh_token",
             "refresh_token": self.refresh_token,
@@ -108,24 +114,28 @@ class SpotifyWrapper:
         )
 
         if not response.ok:
-            print(response.reason)
             return {"error": f"Could not get new access token. {response.reason}"}
         else:
             response_json = response.json()
             self.access_token = response_json["access_token"]
-            print(response_json)
             self.expires_in = datetime.datetime.now() + datetime.timedelta(
                 seconds=response_json["expires_in"]
             )
             return {"access_token": self.access_token}
 
-    def validate_refresh_token(self):
+    def validate_refresh_token(self)->bool:
+        """Validate refresh token. Returns false if refresh token is not valid."""
+
         new_token = self.get_new_access_token()
         if "error" in new_token:
             return False
         return True
 
-    def auth_get(self, url, access_token):
+    def auth_get(self, url, access_token)->requests.Response:
+        """Wrapper method to get data from Spotify API. 
+        Appends Authorization header to the request to provided url.
+        Returns an requests Reponse object. Data from Response is stored in .data attribute."""
+
         response = requests.get(
             url, headers={"Authorization": f"Bearer {access_token}"}, timeout=100
         )
@@ -134,50 +144,68 @@ class SpotifyWrapper:
             resp_json = response.json()
             return resp_json
         else:
-            print("Auth_get exception: " + str(response.reason))
-            raise Exception(response.reason, response.url)
+            return {"error": f"Could not get {url}. {response.reason}"}
 
-    def refresh_token_if_needed(self):
+    def refresh_token_if_needed(self)->None:
+        """Refreshes access token if it has expired."""
+
         if (self.expires_in - datetime.datetime.now()).total_seconds() < 60:
             self.get_new_access_token()
 
-    def getCurrentUserPlaylist(self):
+    def get_current_user_playlists(self)->requests.Response:
+
+        """Returns current user's playlists from endpoint: /playlists. Return is a requests Reponse object. 
+        Data from Response is stored in .data attribute."""
+
+
         self.refresh_token_if_needed()
         resp_json = self.auth_get(
             SPOTIFY_GET_CURRENT_USER_PLAYLIST_URL, self.access_token
         )
+
         return resp_json
 
-    def getUsersPlaylist(self, user_id, offset=0, limit=50):
+    def get_user_playlists(self, user_id:str, offset=0, limit=50)->requests.Response:
+
+        """Returns user's playlists from endpoint: /users/{user_id}/playlists. 
+        Return is a requests Reponse object. Data from Response is stored in .data attribute."""
+
         self.refresh_token_if_needed()
         resp_json = self.auth_get(
             self.get_user_playlists_url(user_id, offset, limit), self.access_token
         )
         return resp_json
 
-    def getTracks(self, playlist_id):
+    def get_tracks(self, playlist_id:str)->requests.Response:
+        """Returns all tracks in a playlist from endpoint: /users/{user_id}/playlists/{playlist_id}/"""
+
         self.refresh_token_if_needed()
         resp_json = self.auth_get(
             SPOTIFY_GET_TRACKS_URL + playlist_id + "/tracks?offset=0", self.access_token
         )
         return resp_json
 
-    def getTrack(self, track_id):
+    def get_track(self, track_id:str)->requests.Response:
+        """Returns detailed information about a track from endpoint :/tracks/{track_id}"""
+
         self.refresh_token_if_needed()
         resp_json = self.auth_get(SPOTIFY_GET_TRACK_URL + track_id, self.access_token)
         return resp_json
 
-    def getTrackFeatures(self, track_id):
-        self.refresh_token_if_needed()
-        try:
-            resp_json = self.auth_get(
-                SPOTIFY_GET_TRACK_FEATURES_URL + track_id, self.access_token
-            )
-            return resp_json
-        except Exception as e:
-            return {"status": "invalid track id"}
+    def get_track_features(self, track_id:str)->requests.Response:
+        """Returns tracks metadata from endpoint: /tracks/{track_id}/features"""
 
-    def getArtistGenres(self, artist_id):
+        self.refresh_token_if_needed()
+        resp_json = self.auth_get(
+            SPOTIFY_GET_TRACK_FEATURES_URL + track_id, self.access_token
+        )
+        return resp_json
+        
+
+    def get_artists_genres(self, artist_id:str)->List[str]:
+
+        """Returns artists genres from endpoint: /artists/{artist_id}"""
+
         self.refresh_token_if_needed()
         resp_json = self.auth_get(SPOTIFY_GET_ARTIST_URL + artist_id, self.access_token)
         if resp_json:
@@ -185,35 +213,38 @@ class SpotifyWrapper:
         else:
             return []
 
-    def getTopTracks(self):
+    def get_top_tracks(self)->requests.Response:
+        """Returns top tracks from endpoint: /me/top/tracks"""
         self.refresh_token_if_needed()
         resp_json = self.auth_get(SPOTIFY_GET_TOP_TRACKS_URL, self.access_token)
         return resp_json
 
-    def get_user_playlists_url(self, user_id, offset, limit):
+    def get_user_playlists_url(self, user_id:str, offset:int, limit:int)->str:
         return f"https://api.spotify.com/v1/users/{user_id}/playlists?offset={offset}&limit={limit}"
 
-    def prepare_authorization_code_url(self, state):
+    def prepare_authorization_code_url(self, state:str)->str:
+        """Creates redirect url for authorization code flow"""
         url = "https://accounts.spotify.com/authorize?"
         url += urllib.parse.urlencode(
             {
                 "response_type": "code",
                 "client_id": CLIENT_ID,
                 "scope": SCOPE,
-                "redirect_uri": redirect_uri,
+                "redirect_uri": REDIRECT_URI,
                 "state": state,
             }
         )
         return url
 
-    def track_search(self, track_name):
+    def track_search(self, track_name:str)->requests.Response:
+        """Search for a track from Spotify"""
         self.refresh_token_if_needed()
         resp_json = self.auth_get(
             SPOTIFY_SEARCH_URL + f"?q={track_name}&type=track", self.access_token
         )
         return resp_json
 
-    def simplified_tracks_search(self, track_name):
+    def simplified_tracks_search(self, track_name:str)->requests.Response:
 
         """
         Get simplified info for a track, returns contains: name, id, preview_url, image_url
@@ -230,10 +261,21 @@ class SpotifyWrapper:
             for track in searched_tracks["tracks"]["items"]
         ]
 
-    def get_profile_info(self):
+    def get_profile_info(self)->requests.Response:
+
+        """Returns user's profile info from endpoint: /me"""
         self.refresh_token_if_needed()
         return self.auth_get(SPOTIFY_USER_PROFILE_INFO_URL, self.access_token)
+    
 
-def generateRandomString(n):
+    def get_authorization_code(self)->None:
+            """Prompts user to set authorization code"""
+            url = self.prepare_authorization_code_url(self.state)
+            print(url)
+            self.code = input("Paste authorization code: ")
+
+
+def generate_random_string(n:int)->str:
+    """Generates random string of length n"""
     res = "".join(random.choices(string.ascii_uppercase + string.digits, k=n))
     return res

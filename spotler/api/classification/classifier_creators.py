@@ -5,13 +5,14 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, StandardSc
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import make_scorer
 from sklearn.model_selection import GridSearchCV
-from sklearn.pipeline import make_pipeline
+from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.metrics import (
     top_k_accuracy_score,
     make_scorer,
     balanced_accuracy_score,
     accuracy_score,
 )
+
 
 
 class ScikitModel(Protocol):
@@ -112,7 +113,7 @@ class LinearDiscriminantAnalysisCreator(OptimizedClassifierCreator):
     """
 
     @staticmethod
-    def get_nested_model(wrapped_classifier):
+    def get_nested_model(wrapped_classifier:Pipeline):
         return wrapped_classifier[1].best_estimator_
    
 
@@ -132,8 +133,9 @@ class LinearSupportVectorClassifierCreator(OptimizedClassifierCreator):
     Optimized Linear Support Vector Classifier model factory
     """
     @staticmethod
-    def get_nested_model(wrapped_classifier):
-        return wrapped_classifier.estimator[1].best_estimator_
+    def get_nested_model(wrapped_classifier:CalibratedClassifierCV):
+        print(wrapped_classifier.calibrated_classifiers_[0])
+        return wrapped_classifier.calibrated_classifiers_[0]
 
 
     def create_optimized_model(
@@ -141,6 +143,7 @@ class LinearSupportVectorClassifierCreator(OptimizedClassifierCreator):
         scoring_strategy=make_scorer(balanced_accuracy_score),
         grid_parameters={"C": [1, 10]},
     ) -> "ScikitModel":
+        
 
         return CalibratedClassifierCV(super()._get_model_wrapped_in_pipeline(
                LinearSVC(dual=False), grid_parameters, scoring_strategy

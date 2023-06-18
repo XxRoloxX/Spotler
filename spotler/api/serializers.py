@@ -47,10 +47,23 @@ class ClassificationModelSerializers(serializers.ModelSerializer):
 
 
 class ClassificationParameterSerializer(serializers.ModelSerializer):
+
+    model_name = serializers.SerializerMethodField('parse_model_name')
+
+    def parse_model_name(self, model:ClassificationParameter):
+      splited_model_name = model.serialized_model_path.split("/")[-1].split("_")
+      
+      if model.serialized_model_path.split("/")[-1][0]=="_":
+          return splited_model_name[1]
+          
+      return splited_model_name[0]
     
     class Meta:
         model=ClassificationParameter
-        fields = '__all__'
+        exclude = ["serialized_model_path", "classes"]
+
+
+
 TRACK_METADATA_KEYS = [
     "acousticness",
     "danceability",
@@ -85,3 +98,4 @@ class BasicSearchTrackInfoSerializer(serializers.Serializer):
     name = serializers.CharField()
     image_url = serializers.CharField()
     preview_url = serializers.CharField()
+
