@@ -8,6 +8,8 @@ def validate_cookies_presence(session):
     if "code" not in session or "refresh_token" not in session:
         return False
     
+    return True
+    
 def verify_cookies_correctness(session):
     """
     Check if code and refresh token in cookie are correct.
@@ -15,6 +17,7 @@ def verify_cookies_correctness(session):
 
     if not validate_cookies_presence(session):
         return False
+    
     
     code = session["code"]
     refresh_token = session["refresh_token"]
@@ -27,14 +30,14 @@ def verify_cookies_correctness(session):
     return True
 
 def create_spotify_wrapper_from_session(session):
-    """
-    Creates a SpotifyWrapper object from the session.
-    """
+    """Creates a spotify wrapper from a session."""
+
     if not verify_cookies_correctness(session):
         return None
     
     code = session["code"]
     refresh_token = session["refresh_token"]
+
 
     spotify_wrapper = SpotifyWrapper(code=code, refresh_token=refresh_token)
 

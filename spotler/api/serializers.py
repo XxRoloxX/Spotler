@@ -80,3 +80,8 @@ class TrackFeaturesSerializer(serializers.Serializer):
     time_signature = serializers.FloatField()
     valence = serializers.FloatField()
 
+class BasicSearchTrackInfoSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    name = serializers.CharField()
+    image_url = serializers.CharField()
+    preview_url = serializers.CharField()

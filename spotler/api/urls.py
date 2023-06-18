@@ -9,4 +9,6 @@ urlpatterns = [
     path('authorize-with-spotify', views.authorize_with_spotify),
     path('verify-cookies', views.verify_cookies),
     path('search-tracks', views.search_tracks),
+    path('profile-info', views.profile_info),
+    path('delete-cookies', views.delete_cookies),
 ]

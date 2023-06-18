@@ -30,6 +30,8 @@ SPOTIFY_REFRESH_ACCESS_TOKEN_URL = "https://accounts.spotify.com/api/token"
 
 SPOTIFY_SEARCH_URL = "https://api.spotify.com/v1/search"
 
+SPOTIFY_USER_PROFILE_INFO_URL = "https://api.spotify.com/v1/me"
+
 
 class SpotifyWrapper:
     def __init__(self, **kwargs):
@@ -116,13 +118,12 @@ class SpotifyWrapper:
                 seconds=response_json["expires_in"]
             )
             return {"access_token": self.access_token}
-        
+
     def validate_refresh_token(self):
-        new_token  = self.get_new_access_token()
+        new_token = self.get_new_access_token()
         if "error" in new_token:
             return False
         return True
-
 
     def auth_get(self, url, access_token):
         response = requests.get(
@@ -205,13 +206,33 @@ class SpotifyWrapper:
         )
         return url
 
-    def search_track(self, track_name):
+    def track_search(self, track_name):
         self.refresh_token_if_needed()
         resp_json = self.auth_get(
             SPOTIFY_SEARCH_URL + f"?q={track_name}&type=track", self.access_token
         )
         return resp_json
 
+    def simplified_tracks_search(self, track_name):
+
+        """
+        Get simplified info for a track, returns contains: name, id, preview_url, image_url
+        """
+        searched_tracks = self.track_search(track_name)
+
+        return [
+            {
+                "name": track["name"],
+                "id": track["id"],
+                "preview_url": track["preview_url"],
+                "image_url": track["album"]["images"][0]["url"],
+            }
+            for track in searched_tracks["tracks"]["items"]
+        ]
+
+    def get_profile_info(self):
+        self.refresh_token_if_needed()
+        return self.auth_get(SPOTIFY_USER_PROFILE_INFO_URL, self.access_token)
 
 def generateRandomString(n):
     res = "".join(random.choices(string.ascii_uppercase + string.digits, k=n))

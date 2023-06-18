@@ -110,19 +110,19 @@ class ClassifierTrainer(metaclass=ABCMeta):
     def create_source_dataframe(self, features_labels, classes_labels):
         ...
     
-    def get_inner_model_classes(self):
+    def get_inner_model_classes(self)->List[Any]:
         self.is_classifier_loaded_validation()
         return self.model.classes_
     
 
-    def predict_proba(self, features:Union[List[Any], Dict[Any,Any]]):
+    def predict_proba(self, features:Union[List[Any], Dict[Any,Any]])->List[float]:
         self.is_classifier_loaded_validation()
         if isinstance(features,dict):
             return self.classifier.predict_proba(self.convert_dict_to_features_list(features))
     
         return self.classifier.predict_proba([features])
 
-    def predict_proba_with_classes(self, features:Union[List[Any], Dict[Any,Any]]):
+    def predict_proba_with_classes(self, features:Union[List[Any], Dict[Any,Any]])->Dict[str,float]:
         predicted_proba = self.predict_proba(features)
         result_mapping = {}
         print(self.model.classes_, predicted_proba)
@@ -130,7 +130,7 @@ class ClassifierTrainer(metaclass=ABCMeta):
             result_mapping[cls]=proba
         return result_mapping
     
-    def predict(self,features:Union[List[Any], Dict[Any,Any]]):
+    def predict(self,features:Union[List[Any], Dict[Any,Any]])->Any:
         self.is_classifier_loaded_validation()
         if isinstance(features,dict):
             return self.classifier.predict(self.convert_dict_to_features_list(features))
@@ -138,7 +138,7 @@ class ClassifierTrainer(metaclass=ABCMeta):
         return self.classifier.predict(features)
 
     @abc.abstractmethod
-    def convert_dict_to_features_list(self, features_dict):
+    def convert_dict_to_features_list(self, features_dict:Dict[Any,Any])->List[Any]:
         ...
     
     @pickle_model
@@ -157,7 +157,7 @@ class ClassifierTrainer(metaclass=ABCMeta):
             self.source_dataframe[self.classes_labels].values.ravel(),
         )
 
-    def score_model(self, scorer):
+    def score_model(self, scorer)->float:
         self.is_classifier_loaded_validation()
         return cross_val_score(self.classifier,
                                 self.source_dataframe[self.features_labels].values,
@@ -202,7 +202,7 @@ class ClassifierNotLoadedException(Exception):
 
 class GenreClassifierTrainer(ClassifierTrainer):
 
-    def convert_dict_to_features_list(self, features_dict):
+    def convert_dict_to_features_list(self, features_dict:Dict[Any,Any])->List[Any]:
         
         features = []
         for metadata_key in TRACK_METADATA_KEYS:

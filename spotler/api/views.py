@@ -8,7 +8,10 @@ from rest_framework.parsers import JSONParser
 from rest_framework import status
 from django import http
 
-from .session_validation.session_validation import create_spotify_wrapper_from_session, verify_cookies_correctness
+from .session_validation.session_validation import (
+    create_spotify_wrapper_from_session,
+    verify_cookies_correctness,
+)
 from .classification.classifier_loader import ClassifiersLoader
 from .data_collection.data_clean_up import fit_data_to_lda, get_most_popular_genres
 from .data_collection.save_to_db import save_track_to_db
@@ -21,7 +24,6 @@ from .classification.classifier_trainer import ClassifierTrainer, GenreClassifie
 
 
 ACTIVE_CLASSIFIERS = ClassifiersLoader()
-
 
 
 @api_view(["POST"])
@@ -92,7 +94,7 @@ def retrieve_tracks_from_playlist(request):
 @api_view(["GET"])
 def train_model(request, pk=None, *args, **kwargs):
     """
-    Train the model with the given criteria. 
+    Train the model with the given criteria.
     """
     genre_classifier = GenreClassifierTrainer()
     genre_classifier.create_source_dataframe()
@@ -114,6 +116,7 @@ def track_genres(request):
     track_id = request.GET.get("track_id")
     track_features = spotler_wrapper.getTrackFeatures(track_id)
     track_features_serializer = TrackFeaturesSerializer(data=track_features)
+
     if track_features_serializer.is_valid():
         active_classifier = ACTIVE_CLASSIFIERS.get_classifier_trainer(0)["model"]
         return Response(
@@ -121,10 +124,10 @@ def track_genres(request):
                 track_features_serializer.validated_data
             )
         )
+    
 
-    return Response(
-        {"status": track_features}, status=status.HTTP_404_NOT_FOUND
-    )
+
+    return Response({"status": track_features}, status=status.HTTP_404_NOT_FOUND)
 
 
 @api_view(["POST"])
@@ -172,23 +175,46 @@ def verify_cookies(request):
 
     return Response({"cookie_status": True})
 
+
 @api_view(["GET"])
 def search_tracks(request):
+
     track_name = request.GET.get("track_name")
-    print(track_name)
+
     if not track_name:
         return Response(
-                    {"status": "error", "message": "No track name in request"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+            {"status": "error", "message": "No track name in request"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     validated_spotify_wrapper = create_spotify_wrapper_from_session(request.session)
 
     if not validated_spotify_wrapper:
         return Response(
-                            {"status": "error", "message": "Invalid cookies"},
-                            status=status.HTTP_401_UNAUTHORIZED,
-                        )
+            {"status": "error", "message": "Invalid cookies"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
     
-    print("VALID WRAPPER")
-    return Response(validated_spotify_wrapper.search_track(track_name)["tracks"]["items"])
+    searched_tracks = validated_spotify_wrapper.simplified_tracks_search(track_name)
+
+    return Response(searched_tracks)
+
+@api_view(["GET"])
+def profile_info(request):
+    spotify_wrapper = create_spotify_wrapper_from_session(request.session)
+
+    if not spotify_wrapper:
+        return Response(
+            {"status": "error", "message": "Invalid cookies"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    result = spotify_wrapper.get_profile_info()
+
+    return Response(result)
+@api_view(["PUT"])
+def delete_cookies(request):
+    """ Delete the cookies from the session."""
+    request.session["code"]= None
+    request.session["refresh_token"] = None
+    return Response({"status": "ok"})
