@@ -17,6 +17,6 @@ WORKDIR /spotler_api
 # Install any needed packages specified in requirements.txt
 RUN pip install -r requirements.txt
 
-RUN chmod +x /spotler_api/run_server.py
-
 CMD ["bash","-c", "./run_server.sh"]
+
+EXPOSE 8080
