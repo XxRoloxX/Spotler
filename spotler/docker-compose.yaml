@@ -1,0 +1,10 @@
+version: '3.4'
+
+services:
+  spotler-api:
+    build: .
+    container_name: spotler-api
+    volumes:
+      - .:/spotler_api
+    ports:
+      - "8080:8080"
