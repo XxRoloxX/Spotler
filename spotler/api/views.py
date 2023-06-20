@@ -1,3 +1,4 @@
+import pprint
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
@@ -103,7 +104,6 @@ def authorize_with_spotify(request):
         )
 
     spotler_wrapper.code = request.data["code"]
-    print(spotler_wrapper.code)
     response = spotler_wrapper.get_refresh_token()
 
     if "error" in response:

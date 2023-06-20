@@ -13,6 +13,7 @@ USER_ID = "spotify"
 CLIENT_ID = os.environ.get("CLIENT_ID")
 CLIENT_SECRET = os.environ.get("CLIENT_SECRET")
 
+
 REDIRECT_URI = "http://localhost:3000/spotify-redirect"
 
 SCOPE = "user-read-private user-top-read playlist-read-collaborative"
