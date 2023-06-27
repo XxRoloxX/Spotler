@@ -15,7 +15,7 @@ COPY . /spotler_api
 WORKDIR /spotler_api
 
 # Install any needed packages specified in requirements.txt
-RUN pip install -r requirements.txt
+RUN pip install -r requirements.txt --no-cache-dir
 
 CMD ["bash","-c", "./run_server.sh"]
 

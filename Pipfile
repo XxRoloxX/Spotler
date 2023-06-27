@@ -12,15 +12,12 @@ requests = "*"
 scikit-learn = "*"
 numpy = "*"
 pandas = "*"
-ydata-profiling = "*"
-ipywidgets = "*"
 imbalanced-learn = "*"
 jsonfield = "*"
 typing = "*"
 django-cors-headers = "*"
 
 [dev-packages]
-ipykernel = "*"
 
 [requires]
 python_version = "3.10"
